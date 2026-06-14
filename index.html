@@ -148,13 +148,28 @@
             <strong id="kpiRoas">0.00x</strong>
           </article>
           <article class="kpi-card alert">
-            <span>Budget Bleeders</span>
-            <strong id="kpiProblems">0</strong>
+            <span>Wasted Spend</span>
+            <strong id="kpiWaste">0</strong>
+            <small id="kpiProblems" class="kpi-sub">0 problem terms</small>
           </article>
           <article class="kpi-card muted">
             <span>Junk Intent</span>
             <strong id="kpiThreats">0</strong>
           </article>
+        </section>
+
+        <section class="table-section scatter-section" aria-label="Scatter plot">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Visual Analysis</p>
+              <h2>CTR vs CPA — 4 Quadrant View</h2>
+            </div>
+            <span id="scatterSubtitle" class="scatter-subtitle"></span>
+          </div>
+          <div class="scatter-wrap" id="scatterWrap">
+            <svg id="scatterPlot" width="100%"></svg>
+            <div id="scatterTooltip" class="scatter-tooltip is-hidden"></div>
+          </div>
         </section>
 
         <section class="feature-grid" aria-label="Features">
@@ -310,6 +325,31 @@
                 </table>
               </div>
             </article>
+          </div>
+        </section>
+
+        <section class="table-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Keyword Gap</p>
+              <h2>Tambah Sebagai Exact Match Keyword</h2>
+            </div>
+            <button id="exportKeywordGapButton" class="small-button" type="button">Export CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Search Term</th>
+                  <th>Label</th>
+                  <th class="right">CTR</th>
+                  <th class="right">Conv.</th>
+                  <th class="right">ROAS</th>
+                  <th>Cadangan Keyword</th>
+                </tr>
+              </thead>
+              <tbody id="keywordGapTable"></tbody>
+            </table>
           </div>
         </section>
 
