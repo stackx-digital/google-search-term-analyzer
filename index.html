@@ -37,9 +37,13 @@
           <p class="eyebrow">Google Ads Search Terms</p>
           <h1>Search Term Analyzer</h1>
         </div>
-        <div class="header-meta">
-          <span class="status-dot"></span>
-          Local browser analysis
+        <div style="display:flex;align-items:center;gap:10px">
+          <button id="helpButton" class="ghost-button" type="button" aria-label="Panduan pengguna" style="min-height:34px;padding:0 12px;font-size:15px;font-weight:700">? Panduan</button>
+          <button id="darkModeToggle" class="ghost-button" type="button" aria-label="Toggle dark mode" style="min-height:34px;padding:0 12px;font-size:16px">🌙</button>
+          <div class="header-meta">
+            <span class="status-dot"></span>
+            Local browser analysis
+          </div>
         </div>
       </header>
 
@@ -518,6 +522,7 @@
               <h2>Search Terms Detail</h2>
             </div>
             <div class="detail-actions">
+              <span id="detailRowCount" class="row-count"></span>
               <button id="copyExactButton" class="small-button" type="button">Copy Exact</button>
               <button id="copyPhraseButton" class="small-button" type="button">Copy Phrase</button>
             </div>
@@ -569,6 +574,373 @@
       </section>
     </main>
 
+    <!-- Help Modal -->
+    <div id="helpModal" class="help-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+      <div class="help-backdrop"></div>
+      <div class="help-dialog">
+        <div class="help-header">
+          <h2 id="helpModalTitle">Panduan Pengguna</h2>
+          <button id="helpClose" class="help-close" type="button" aria-label="Tutup panduan">✕</button>
+        </div>
+
+        <div class="help-tabs" role="tablist">
+          <button class="help-tab active" data-tab="download" role="tab" aria-selected="true">📥 Cara Download</button>
+          <button class="help-tab" data-tab="metrics" role="tab" aria-selected="false">📊 Penerangan Metrik</button>
+          <button class="help-tab" data-tab="labels" role="tab" aria-selected="false">🏷️ Label & Strategi</button>
+          <button class="help-tab" data-tab="features" role="tab" aria-selected="false">⚙️ Fungsi App</button>
+        </div>
+
+        <div class="help-body">
+
+          <!-- TAB: Cara Download -->
+          <div class="help-panel active" data-panel="download">
+            <div class="help-intro">
+              <p>Export <strong>Search Terms Report</strong> dari Google Ads Dashboard dalam format CSV, kemudian upload ke sini untuk analisis automatik.</p>
+            </div>
+
+            <ol class="help-steps">
+              <li class="help-step">
+                <span class="step-num">1</span>
+                <div class="step-content">
+                  <strong>Log masuk Google Ads</strong>
+                  <p>Pergi ke <code>ads.google.com</code> dan log masuk ke akaun anda.</p>
+                </div>
+              </li>
+              <li class="help-step">
+                <span class="step-num">2</span>
+                <div class="step-content">
+                  <strong>Pergi ke bahagian Keywords</strong>
+                  <p>Pada menu kiri, klik <strong>Keywords</strong> → pilih <strong>Search terms</strong> dari submenu yang muncul.</p>
+                  <div class="step-note">💡 Atau: Campaigns → pilih kempen → Keywords → Search terms</div>
+                </div>
+              </li>
+              <li class="help-step">
+                <span class="step-num">3</span>
+                <div class="step-content">
+                  <strong>Tetapkan julat tarikh</strong>
+                  <p>Klik pada <strong>Date range</strong> di bahagian atas kanan. Pilih tempoh yang relevan — biasanya <em>Last 30 days</em> atau <em>Last 90 days</em> untuk analisis yang bermakna.</p>
+                  <div class="step-note">⚠️ Elak tempoh terlalu pendek (bawah 14 hari) kerana data tidak mencukupi untuk keputusan yang tepat.</div>
+                </div>
+              </li>
+              <li class="help-step">
+                <span class="step-num">4</span>
+                <div class="step-content">
+                  <strong>Pastikan kolum yang diperlukan wujud</strong>
+                  <p>Klik ikon <strong>Columns</strong> (ikon lajur di atas jadual). Pastikan kolum berikut diaktifkan:</p>
+                  <ul class="col-list">
+                    <li><span class="col-badge">Search term</span></li>
+                    <li><span class="col-badge">Campaign</span></li>
+                    <li><span class="col-badge">Ad group</span></li>
+                    <li><span class="col-badge">Cost</span></li>
+                    <li><span class="col-badge">Clicks</span></li>
+                    <li><span class="col-badge">Impressions</span></li>
+                    <li><span class="col-badge">CTR</span></li>
+                    <li><span class="col-badge">Conversions</span> <em>(jika ada tracking)</em></li>
+                    <li><span class="col-badge">Conv. value</span> <em>(jika ada)</em></li>
+                    <li><span class="col-badge">Search impr. share</span></li>
+                  </ul>
+                </div>
+              </li>
+              <li class="help-step">
+                <span class="step-num">5</span>
+                <div class="step-content">
+                  <strong>Download sebagai CSV</strong>
+                  <p>Klik ikon <strong>Download</strong> (anak panah ke bawah ↓) di bahagian atas jadual. Pilih <strong>CSV</strong> atau <strong>.csv (Excel)</strong>.</p>
+                  <div class="step-note">✅ Format yang disokong: .csv, .tsv, .txt (UTF-8 atau UTF-16)</div>
+                </div>
+              </li>
+              <li class="help-step">
+                <span class="step-num">6</span>
+                <div class="step-content">
+                  <strong>Upload ke Search Term Analyzer</strong>
+                  <p>Klik butang <strong>Upload CSV</strong> di atas, atau <strong>drag &amp; drop</strong> fail terus ke dalam kotak dropzone.</p>
+                </div>
+              </li>
+            </ol>
+
+            <div class="help-tip-box">
+              <strong>💡 Tips Pro</strong>
+              <ul>
+                <li>Download secara berasingan mengikut kempen untuk analisis yang lebih fokus.</li>
+                <li>Guna fungsi <strong>Compare</strong> untuk bandingkan dua tempoh (e.g. bulan ini vs bulan lepas).</li>
+                <li>Export dari <em>Search terms report</em> di bawah Reports tab juga berfungsi.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- TAB: Penerangan Metrik -->
+          <div class="help-panel" data-panel="metrics">
+            <div class="help-intro">
+              <p>Setiap search term dianalisis menggunakan metrik-metrik berikut. Fahami maksud setiap nilai untuk membuat keputusan yang lebih baik.</p>
+            </div>
+
+            <div class="metric-group">
+              <h3 class="metric-group-title">📋 Data Asas</h3>
+              <div class="metric-table">
+                <div class="metric-row">
+                  <div class="metric-name">Search Term</div>
+                  <div class="metric-desc">Kata kunci sebenar yang ditaip oleh pengguna di Google sebelum melihat iklan anda. Ini bukan keyword yang anda bidding — ini adalah variasi sebenar dari pengguna.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">Campaign</div>
+                  <div class="metric-desc">Nama kempen Google Ads yang dicetuskan oleh search term ini.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">Ad Group</div>
+                  <div class="metric-desc">Kumpulan iklan dalam kempen yang mengandungi keyword yang memadankan search term ini.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">Match Type</div>
+                  <div class="metric-desc">Jenis pemadanan keyword: <strong>Exact</strong> (tepat sama), <strong>Phrase</strong> (mengandungi frasa), <strong>Broad</strong> (padanan luas — paling banyak variasi).</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="metric-group">
+              <h3 class="metric-group-title">💰 Metrik Perbelanjaan</h3>
+              <div class="metric-table">
+                <div class="metric-row">
+                  <div class="metric-name">Cost / Spend</div>
+                  <div class="metric-desc">Jumlah wang yang dibelanjakan untuk search term ini dalam tempoh yang dipilih. Semakin tinggi nilai ini tanpa konversi, semakin besar pembaziran.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">Clicks</div>
+                  <div class="metric-desc">Bilangan kali pengguna mengklik iklan anda selepas menaip search term ini.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">Impressions</div>
+                  <div class="metric-desc">Bilangan kali iklan anda dipaparkan apabila search term ini dicari. Tinggi tapi klik rendah = masalah pada teks iklan atau relevansi.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">CTR (Click-Through Rate)</div>
+                  <div class="metric-desc">Peratusan tayangan yang menghasilkan klik. Formula: <code>Clicks ÷ Impressions × 100</code>. CTR tinggi (>8%) menunjukkan iklan relevan. CTR rendah (&lt;1.5%) bermaksud teks iklan atau keyword perlu diperbaiki.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="metric-group">
+              <h3 class="metric-group-title">🎯 Metrik Konversi</h3>
+              <div class="metric-table">
+                <div class="metric-row">
+                  <div class="metric-name">Conversions</div>
+                  <div class="metric-desc">Bilangan tindakan berharga yang berlaku selepas klik — jualan, pendaftaran, pertanyaan, atau apa sahaja yang anda tracking dalam Google Ads.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">Conversion Value</div>
+                  <div class="metric-desc">Nilai monetari dari konversi. Perlu dikonfigurasi dalam Google Ads. Jika kosong, app akan guna mod tanpa konversi data.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">ROAS (Return on Ad Spend)</div>
+                  <div class="metric-desc">Pulangan dari setiap ringgit yang dibelanjakan. Formula: <code>Conv. Value ÷ Cost</code>. ROAS 3.00x bermaksud setiap RM1 belanja menghasilkan RM3 hasil. Target ROAS boleh ditetapkan dalam tetapan app.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">CPA (Cost Per Acquisition)</div>
+                  <div class="metric-desc">Kos untuk mendapatkan satu konversi. Formula: <code>Cost ÷ Conversions</code>. Bandingkan dengan Target CPA anda — jika jauh melebihi target, term ini perlu diaudit.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="metric-group">
+              <h3 class="metric-group-title">📈 Metrik Prestasi Lanjutan</h3>
+              <div class="metric-table">
+                <div class="metric-row">
+                  <div class="metric-name">Search Impression Share</div>
+                  <div class="metric-desc">Peratusan tayangan yang anda terima berbanding jumlah tayangan yang layak anda terima. Contoh: 34% bermaksud 66% lagi peluang tayangan hilang (mungkin kerana bajet rendah atau bid rendah). Jika sesebuah term bagus tapi impression share rendah — patut scale!</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">Priority Score</div>
+                  <div class="metric-desc">Skor keutamaan 0–100 yang dikira oleh app berdasarkan gabungan kategori, perbelanjaan, konversi, dan impression. Semakin tinggi, semakin segera perlu tindakan diambil.</div>
+                </div>
+                <div class="metric-row">
+                  <div class="metric-name">Intent</div>
+                  <div class="metric-desc">Niat pengguna yang dikesan dari teks search term: <strong>Transactional</strong> (siap nak beli), <strong>Commercial</strong> (buat perbandingan), <strong>Navigational</strong> (cari lokasi/laman), <strong>Informational</strong> (nak tahu), <strong>General</strong> (tidak jelas).</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: Label & Strategi -->
+          <div class="help-panel" data-panel="labels">
+            <div class="help-intro">
+              <p>App secara automatik mengklasifikasikan setiap search term kepada satu daripada 5 label strategik berdasarkan prestasi dan tetapan threshold anda.</p>
+            </div>
+
+            <div class="label-card label-card-Opportunity">
+              <div class="label-card-header">
+                <span class="label-pill label-Opportunity">Opportunity</span>
+                <strong>Peluang untuk Scale</strong>
+              </div>
+              <p>Term ini menunjukkan prestasi yang baik — sama ada ROAS tinggi, CTR kukuh, atau konversi dengan impression share yang rendah (bermakna masih ada ruang untuk membesar).</p>
+              <div class="label-actions">
+                <strong>Tindakan yang disyorkan:</strong>
+                <ul>
+                  <li>Naikkan bid atau bajet untuk term ini</li>
+                  <li>Asingkan ke dalam ad group atau kempen tersendiri</li>
+                  <li>Cipta iklan yang lebih spesifik untuk naikkan CTR lagi</li>
+                  <li>Tambah sebagai Exact Match keyword</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="label-card label-card-Problem">
+              <div class="label-card-header">
+                <span class="label-pill label-Problem">Problem</span>
+                <strong>Pembaziran Bajet</strong>
+              </div>
+              <p>Term ini membelanjakan wang melebihi target CPA tanpa menghasilkan konversi, atau ROAS berada di bawah 1.00x. Setiap klik adalah kerugian.</p>
+              <div class="label-actions">
+                <strong>Tindakan yang disyorkan:</strong>
+                <ul>
+                  <li>Tambah sebagai negative keyword (exact atau phrase)</li>
+                  <li>Audit landing page — mungkin tidak relevan dengan search term</li>
+                  <li>Kurangkan bid untuk term ini dahulu sambil memantau</li>
+                  <li>Semak sama ada match type terlalu luas (Broad)</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="label-card label-card-Weakness">
+              <div class="label-card-header">
+                <span class="label-pill label-Weakness">Weakness</span>
+                <strong>Prestasi Lemah — Boleh Diperbaiki</strong>
+              </div>
+              <p>Term ini ada potensi tapi tidak mencapai sasaran — sama ada impressions tinggi dengan CTR rendah (masalah teks iklan), atau CPA melebihi target walaupun ada konversi.</p>
+              <div class="label-actions">
+                <strong>Tindakan yang disyorkan:</strong>
+                <ul>
+                  <li>Perbaiki teks iklan agar lebih relevan dengan search term</li>
+                  <li>Optimumkan landing page untuk meningkatkan conversion rate</li>
+                  <li>Uji A/B teks iklan yang berbeza</li>
+                  <li>Semak kesesuaian offer dengan intent pengguna</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="label-card label-card-Threat">
+              <div class="label-card-header">
+                <span class="label-pill label-Threat">Threat</span>
+                <strong>Junk atau Kompetitor</strong>
+              </div>
+              <p>Term ini mengandungi perkataan junk (e.g. percuma, kerja, download) atau nama kompetitor. Pengguna yang mencari ini hampir pasti tidak akan convert sebagai pelanggan anda.</p>
+              <div class="label-actions">
+                <strong>Tindakan yang disyorkan:</strong>
+                <ul>
+                  <li>Tambah segera sebagai negative keyword</li>
+                  <li>Gunakan Negative Builder dalam app ini untuk export ke Google Ads Editor</li>
+                  <li>Tambah kata junk ke dalam senarai "Extra junk words" dalam tetapan</li>
+                  <li>Untuk kompetitor — tambah nama mereka dalam medan "Competitors"</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="label-card label-card-Neutral">
+              <div class="label-card-header">
+                <span class="label-pill label-Neutral">Neutral</span>
+                <strong>Stabil — Pantau Sahaja</strong>
+              </div>
+              <p>Term ini tidak menunjukkan sebarang isyarat kuat ke mana-mana arah. Prestasi berada dalam julat normal.</p>
+              <div class="label-actions">
+                <strong>Tindakan yang disyorkan:</strong>
+                <ul>
+                  <li>Pantau dalam tempoh 2–4 minggu lagi sebelum buat keputusan</li>
+                  <li>Jika spend mula naik tanpa konversi, audit semula</li>
+                  <li>Boleh dibiarkan dahulu jika tidak memakan banyak bajet</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB: Fungsi App -->
+          <div class="help-panel" data-panel="features">
+            <div class="help-intro">
+              <p>Panduan ringkas untuk semua fungsi utama dalam Search Term Analyzer.</p>
+            </div>
+
+            <div class="feature-guide-grid">
+              <div class="feature-guide-card">
+                <div class="fg-icon">📥</div>
+                <div class="fg-body">
+                  <strong>Upload CSV</strong>
+                  <p>Upload fail search terms dari Google Ads. Sokong format CSV, TSV, dan TXT dalam pengekodan UTF-8 atau UTF-16. Boleh juga drag &amp; drop terus ke dalam kotak dropzone.</p>
+                </div>
+              </div>
+
+              <div class="feature-guide-card">
+                <div class="fg-icon">🔄</div>
+                <div class="fg-body">
+                  <strong>Compare</strong>
+                  <p>Upload fail kedua untuk bandingkan dua tempoh. App akan kenal pasti term yang berulang, term baru, dan term yang hilang. Berguna untuk track kemajuan dari bulan ke bulan.</p>
+                </div>
+              </div>
+
+              <div class="feature-guide-card">
+                <div class="fg-icon">🚫</div>
+                <div class="fg-body">
+                  <strong>Negative Builder</strong>
+                  <p>Bina senarai negative keyword secara automatik dari term yang dikesan sebagai Threat. Pilih match type (Exact/Phrase/Broad) dan level (Campaign/Ad Group/Account). Export terus dalam format Google Ads Editor CSV.</p>
+                </div>
+              </div>
+
+              <div class="feature-guide-card">
+                <div class="fg-icon">🤖</div>
+                <div class="fg-body">
+                  <strong>AI Strategy Brief</strong>
+                  <p>Jana ringkasan strategik yang boleh dicopy terus ke ChatGPT atau dikongsi dengan team. Mengandungi top opportunities, masalah utama, dan cadangan tindakan berdasarkan data.</p>
+                </div>
+              </div>
+
+              <div class="feature-guide-card">
+                <div class="fg-icon">💾</div>
+                <div class="fg-body">
+                  <strong>Save &amp; Restore</strong>
+                  <p>Simpan sesi kerja (termasuk data, pilihan, dan tetapan) dalam browser anda. Restore untuk teruskan kerja dalam sesi lain. Data disimpan secara lokal — tiada data dihantar ke mana-mana server.</p>
+                </div>
+              </div>
+
+              <div class="feature-guide-card">
+                <div class="fg-icon">🔍</div>
+                <div class="fg-body">
+                  <strong>Inspector / Search Terms Detail</strong>
+                  <p>Jadual penuh semua search term dengan filter mengikut label, intent, dan carian teks. Pilih term secara manual untuk dijadikan negative. Tekan <kbd>Esc</kbd> untuk clear carian.</p>
+                </div>
+              </div>
+
+              <div class="feature-guide-card">
+                <div class="fg-icon">⚙️</div>
+                <div class="fg-body">
+                  <strong>Advanced Rules</strong>
+                  <p>Sesuaikan threshold untuk klasifikasi automatik: Target CPA, minimum waste spend, ROAS minimum untuk scale, CTR benchmark, dan impression share limit. Tambah nama kompetitor dan kata junk khusus industri anda.</p>
+                </div>
+              </div>
+
+              <div class="feature-guide-card">
+                <div class="fg-icon">📄</div>
+                <div class="fg-body">
+                  <strong>PDF / Print</strong>
+                  <p>Cetak atau simpan laporan sebagai PDF menggunakan fungsi print browser. Butiran Inspector disembunyikan dalam print view untuk laporan yang lebih bersih.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="help-tip-box" style="margin-top:20px">
+              <strong>🔒 Privasi &amp; Keselamatan Data</strong>
+              <ul>
+                <li>Semua analisis dijalankan 100% dalam browser anda — tiada data dihantar ke server luar.</li>
+                <li>Fail CSV anda tidak disimpan selepas tab browser ditutup (kecuali anda klik Save).</li>
+                <li>Fungsi Save menggunakan localStorage browser — data tidak meninggalkan peranti anda.</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay is-hidden" aria-hidden="true">
+      <div class="loading-spinner"></div>
+      <p class="loading-label">Processing...</p>
+    </div>
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
     <script src="./app.js"></script>
   </body>
 </html>
