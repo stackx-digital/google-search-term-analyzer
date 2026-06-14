@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Private browser-based Google Ads search term analyzer.">
+    <title>Search Term Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Space+Grotesk:wght@300..700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      window.tailwind = window.tailwind || {};
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              ink: "#101828",
+              muted: "#667085",
+              line: "#e4e7ec",
+              brand: "#2563eb"
+            },
+            fontFamily: {
+              sans: ["Google Sans Flex", "ui-sans-serif", "system-ui", "sans-serif"],
+              heading: ["Space Grotesk", "Google Sans Flex", "ui-sans-serif", "system-ui", "sans-serif"]
+            }
+          }
+        }
+      };
+    </script>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body class="min-h-screen antialiased font-sans">
+    <main class="app-shell mx-auto max-w-[1420px] px-4 py-6 sm:px-6 lg:px-8">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Google Ads Search Terms</p>
+          <h1>Search Term Analyzer</h1>
+        </div>
+        <div class="header-meta">
+          <span class="status-dot"></span>
+          Local browser analysis
+        </div>
+      </header>
+
+      <section class="control-band" aria-label="Analyzer setup">
+        <div class="field">
+          <label for="brandInput">Brand name</label>
+          <input id="brandInput" type="text" placeholder="e.g. Rose Gold">
+        </div>
+
+        <div class="field compact-field">
+          <label for="targetCpaInput">Target CPA</label>
+          <input id="targetCpaInput" type="number" min="1" step="1" value="50">
+        </div>
+
+        <div class="field compact-field">
+          <label for="currencyInput">Currency</label>
+          <input id="currencyInput" type="text" maxlength="6" value="RM">
+        </div>
+
+        <div class="file-actions">
+          <input id="fileInput" type="file" accept=".csv,.tsv,.txt" hidden>
+          <input id="compareFileInput" type="file" accept=".csv,.tsv,.txt" hidden>
+          <button id="uploadButton" class="primary-button" type="button">Upload CSV</button>
+          <button id="compareUploadButton" class="ghost-button" type="button">Compare</button>
+          <button id="sampleButton" class="ghost-button" type="button">Load Sample</button>
+          <button id="saveSessionButton" class="ghost-button" type="button">Save</button>
+          <button id="restoreSessionButton" class="ghost-button" type="button">Restore</button>
+          <button id="printReportButton" class="ghost-button" type="button">PDF</button>
+          <button id="clearButton" class="ghost-button" type="button">Clear</button>
+        </div>
+      </section>
+
+      <section class="settings-panel" aria-label="Analyzer rules">
+        <details>
+          <summary>Advanced rules, competitor terms, and custom junk words</summary>
+          <div class="settings-grid">
+            <div class="field compact-field">
+              <label for="minWasteInput">Waste spend</label>
+              <input id="minWasteInput" type="number" min="0" step="1" value="25">
+            </div>
+            <div class="field compact-field">
+              <label for="minRoasInput">Scale ROAS</label>
+              <input id="minRoasInput" type="number" min="0" step="0.1" value="3">
+            </div>
+            <div class="field compact-field">
+              <label for="highCtrInput">High CTR %</label>
+              <input id="highCtrInput" type="number" min="0" step="0.1" value="8">
+            </div>
+            <div class="field compact-field">
+              <label for="lowCtrInput">Low CTR %</label>
+              <input id="lowCtrInput" type="number" min="0" step="0.1" value="1.5">
+            </div>
+            <div class="field compact-field">
+              <label for="lowShareInput">Low share %</label>
+              <input id="lowShareInput" type="number" min="0" step="1" value="50">
+            </div>
+            <div class="field compact-field">
+              <label for="minClicksInput">Min clicks</label>
+              <input id="minClicksInput" type="number" min="0" step="1" value="3">
+            </div>
+            <div class="field compact-field">
+              <label for="highImpressionsInput">High impressions</label>
+              <input id="highImpressionsInput" type="number" min="0" step="10" value="500">
+            </div>
+            <div class="field">
+              <label for="competitorInput">Competitors</label>
+              <input id="competitorInput" type="text" placeholder="comma separated competitor brands">
+            </div>
+            <div class="field wide-field">
+              <label for="customJunkInput">Extra junk words</label>
+              <input id="customJunkInput" type="text" placeholder="e.g. internship, pdf, free trial">
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="dropzone" class="dropzone" aria-label="File upload dropzone">
+        <div>
+          <h2>Drop Google Ads CSV or TSV here</h2>
+          <p id="fileStatus">No report loaded</p>
+          <p id="compareStatus" class="secondary-status">No comparison report loaded</p>
+        </div>
+        <span class="dropzone-pill">Search terms report</span>
+      </section>
+
+      <section id="report" class="report is-hidden">
+        <section class="kpi-grid" aria-label="Key metrics">
+          <article class="kpi-card">
+            <span>Total Terms</span>
+            <strong id="kpiTerms">0</strong>
+          </article>
+          <article class="kpi-card">
+            <span>Total Spend</span>
+            <strong id="kpiSpend">0</strong>
+          </article>
+          <article class="kpi-card">
+            <span>Conversions</span>
+            <strong id="kpiConversions">0</strong>
+          </article>
+          <article class="kpi-card">
+            <span>ROAS</span>
+            <strong id="kpiRoas">0.00x</strong>
+          </article>
+          <article class="kpi-card alert">
+            <span>Budget Bleeders</span>
+            <strong id="kpiProblems">0</strong>
+          </article>
+          <article class="kpi-card muted">
+            <span>Junk Intent</span>
+            <strong id="kpiThreats">0</strong>
+          </article>
+        </section>
+
+        <section class="feature-grid" aria-label="Features">
+          <article class="feature-card">
+            <div class="panel-heading">
+              <h3>Negative Builder</h3>
+              <span class="feature-chip">1</span>
+            </div>
+            <p class="feature-lead">Auto-susun exact, phrase, dan broad negatives terus dari search term yang tak relevan.</p>
+            <div class="feature-metric">
+              <strong id="featureNegativeCount">0</strong>
+              <span>Ready to export</span>
+            </div>
+          </article>
+          <article class="feature-card">
+            <div class="panel-heading">
+              <h3>AI Strategy Brief</h3>
+              <span class="feature-chip">2</span>
+            </div>
+            <p class="feature-lead">Generate ringkasan tindakan yang boleh terus dihantar ke ChatGPT atau team internal.</p>
+            <div class="feature-metric">
+              <strong id="featureBriefCount">0</strong>
+              <span>Action points</span>
+            </div>
+          </article>
+          <article class="feature-card">
+            <div class="panel-heading">
+              <h3>Session Save</h3>
+              <span class="feature-chip">3</span>
+            </div>
+            <p class="feature-lead">Simpan settings, selection, dan compare state terus dalam browser untuk kerja berulang.</p>
+            <div class="feature-metric">
+              <strong id="featureSessionState">Local</strong>
+              <span>Persistent workflow</span>
+            </div>
+          </article>
+          <article class="feature-card">
+            <div class="panel-heading">
+              <h3>Comparison Mode</h3>
+              <span class="feature-chip">4</span>
+            </div>
+            <p class="feature-lead">Upload report sebelum dan selepas untuk nampak repeated, changed, dan fixed terms.</p>
+            <div class="feature-metric">
+              <strong id="featureCompareState">Off</strong>
+              <span>Before / after tracking</span>
+            </div>
+          </article>
+        </section>
+
+        <section class="insight-grid">
+          <article class="insight-panel">
+            <div class="panel-heading">
+              <h2>Priority Actions</h2>
+              <button id="exportAllButton" class="small-button" type="button">Export Detail</button>
+            </div>
+            <div id="priorityActions" class="action-list"></div>
+          </article>
+
+          <article class="insight-panel">
+            <div class="panel-heading">
+              <h2>Campaign Signals</h2>
+            </div>
+            <div id="campaignSignals" class="campaign-list"></div>
+          </article>
+        </section>
+
+        <section class="insight-grid comparison-grid is-single">
+          <article class="insight-panel">
+            <div class="panel-heading">
+              <h2>AI Strategy Brief</h2>
+              <button id="copyAiPromptButton" class="small-button" type="button">Copy Prompt</button>
+            </div>
+            <div id="aiBrief" class="brief-box"></div>
+          </article>
+
+          <article id="comparisonPanel" class="insight-panel is-hidden">
+            <div class="panel-heading">
+              <h2>Before vs After</h2>
+              <button id="clearCompareButton" class="small-button" type="button">Clear</button>
+            </div>
+            <div id="comparisonSummary" class="campaign-list"></div>
+          </article>
+        </section>
+
+        <section id="comparisonTableSection" class="table-section is-hidden">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Comparison</p>
+              <h2>Repeated and Changed Terms</h2>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Search Term</th>
+                  <th class="right">Cost Change</th>
+                  <th class="right">Conv. Change</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="comparisonTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="table-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Breakdown</p>
+              <h2>Campaign and Ad Group Performance</h2>
+            </div>
+          </div>
+          <div class="segment-grid">
+            <article class="data-panel">
+              <div class="panel-heading">
+                <h3>Campaign Breakdown</h3>
+                <button class="small-button export-bucket" data-bucket="campaigns" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Campaign</th>
+                      <th class="right">Spend</th>
+                      <th class="right">Conv.</th>
+                      <th class="right">Junk</th>
+                      <th class="right">ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="campaignBreakdownTable"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="data-panel">
+              <div class="panel-heading">
+                <h3>Ad Group Breakdown</h3>
+                <button class="small-button export-bucket" data-bucket="adgroups" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Ad Group</th>
+                      <th class="right">Spend</th>
+                      <th class="right">Conv.</th>
+                      <th class="right">Junk</th>
+                      <th class="right">ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adGroupBreakdownTable"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="table-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">SWOT Tables</p>
+              <h2>Strategic Buckets</h2>
+            </div>
+          </div>
+
+          <div class="bucket-grid">
+            <article class="data-panel">
+              <div class="panel-heading">
+                <h3>Scale Candidates</h3>
+                <button class="small-button export-bucket" data-bucket="scale" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Search Term</th>
+                      <th class="right">Conv.</th>
+                      <th class="right">Spend</th>
+                      <th class="right">ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scaleTable"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="data-panel">
+              <div class="panel-heading">
+                <h3>Negative Candidates</h3>
+                <button class="small-button export-bucket" data-bucket="negative" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Search Term</th>
+                      <th class="right">Spend</th>
+                      <th class="right">Clicks</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="negativeTable"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="data-panel">
+              <div class="panel-heading">
+                <h3>Budget Bleeding</h3>
+                <button class="small-button export-bucket" data-bucket="problem" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Search Term</th>
+                      <th class="right">Spend</th>
+                      <th class="right">Conv.</th>
+                      <th class="right">CPA</th>
+                    </tr>
+                  </thead>
+                  <tbody id="problemTable"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="data-panel">
+              <div class="panel-heading">
+                <h3>Hidden Gems</h3>
+                <button class="small-button export-bucket" data-bucket="gem" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Search Term</th>
+                      <th class="right">Spend</th>
+                      <th class="right">Conv.</th>
+                      <th class="right">ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="gemTable"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="table-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Segments</p>
+              <h2>Brand, Location, and Phrases</h2>
+            </div>
+            <div class="segmented-control" role="group" aria-label="N-gram size">
+              <button class="gram-button" data-gram="1" type="button">1</button>
+              <button class="gram-button active" data-gram="2" type="button">2</button>
+              <button class="gram-button" data-gram="3" type="button">3</button>
+              <button class="gram-button" data-gram="4" type="button">4</button>
+            </div>
+          </div>
+
+          <div class="segment-grid">
+            <article class="data-panel">
+              <div class="panel-heading">
+                <h3 id="brandHeading">Brand Terms</h3>
+                <button class="small-button export-bucket" data-bucket="brand" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Search Term</th>
+                      <th class="right">Spend</th>
+                      <th class="right">Conv.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="brandTable"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="data-panel">
+              <div class="panel-heading">
+                <h3>Location Terms</h3>
+                <button class="small-button export-bucket" data-bucket="location" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Search Term</th>
+                      <th class="right">Spend</th>
+                      <th class="right">Conv.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="locationTable"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="data-panel phrase-panel">
+              <div class="panel-heading">
+                <h3>Recurring Phrases</h3>
+                <button class="small-button export-bucket" data-bucket="ngram" type="button">CSV</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Phrase</th>
+                      <th class="right">Frequency</th>
+                      <th class="right">Spend</th>
+                      <th class="right">Conv.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="ngramTable"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="table-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Negative Builder</p>
+              <h2>Build Google Ads Negatives</h2>
+            </div>
+            <div class="builder-controls">
+              <select id="negativeMatchSelect" aria-label="Negative match type">
+                <option value="Exact">Exact</option>
+                <option value="Phrase">Phrase</option>
+                <option value="Broad">Broad</option>
+              </select>
+              <select id="negativeLevelSelect" aria-label="Negative level">
+                <option value="Campaign">Campaign</option>
+                <option value="Ad group">Ad group</option>
+                <option value="Account">Account</option>
+              </select>
+              <button id="autoSelectNegativesButton" class="small-button" type="button">Auto Select</button>
+              <button id="googleAdsEditorButton" class="small-button" type="button">Editor CSV</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Negative Keyword</th>
+                  <th>Campaign</th>
+                  <th>Ad Group</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="negativeBuilderTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="table-section inspector-section">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Inspector</p>
+              <h2>Search Terms Detail</h2>
+            </div>
+            <div class="detail-actions">
+              <button id="copyExactButton" class="small-button" type="button">Copy Exact</button>
+              <button id="copyPhraseButton" class="small-button" type="button">Copy Phrase</button>
+            </div>
+          </div>
+
+          <div class="filter-bar">
+            <select id="categoryFilter" aria-label="Category filter">
+              <option value="all">Any Strategy</option>
+              <option value="Opportunity">Opportunity</option>
+              <option value="Problem">Problem</option>
+              <option value="Weakness">Weakness</option>
+              <option value="Threat">Threat</option>
+              <option value="Neutral">Neutral</option>
+            </select>
+            <select id="intentFilter" aria-label="Intent filter">
+              <option value="all">Any Intent</option>
+              <option value="Informational">Informational</option>
+              <option value="Navigational">Navigational</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Transactional">Transactional</option>
+              <option value="General">General</option>
+            </select>
+            <label class="toggle-row">
+              <input id="questionFilter" type="checkbox">
+              Questions only
+            </label>
+            <input id="searchFilter" type="search" placeholder="Search terms">
+          </div>
+
+          <div class="table-wrap detail-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="check-cell"><input id="selectAllBox" type="checkbox" aria-label="Select all visible terms"></th>
+                  <th><button class="sort-button" data-sort="term" type="button">Search Term</button></th>
+                  <th><button class="sort-button" data-sort="category" type="button">Label</button></th>
+                  <th><button class="sort-button" data-sort="intent" type="button">Intent</button></th>
+                  <th class="right"><button class="sort-button" data-sort="priority" type="button">Priority</button></th>
+                  <th>Rationale</th>
+                  <th class="right"><button class="sort-button" data-sort="cost" type="button">Cost</button></th>
+                  <th class="right"><button class="sort-button" data-sort="conversions" type="button">Conv.</button></th>
+                  <th class="right"><button class="sort-button" data-sort="roas" type="button">ROAS</button></th>
+                </tr>
+              </thead>
+              <tbody id="detailTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
