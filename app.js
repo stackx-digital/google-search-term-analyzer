@@ -889,6 +889,18 @@ function scheduleChartRerender() {
   });
 }
 
+function niceMax(v) {
+  if (v <= 0) return 10;
+  const exp = Math.pow(10, Math.floor(Math.log10(v)));
+  const n = v / exp;
+  const nice = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+  return nice * exp;
+}
+
+function pct(sortedArr, p) {
+  return sortedArr[Math.min(Math.floor(sortedArr.length * p), sortedArr.length - 1)] || 0;
+}
+
 function renderScatterPlot() {
   const svg = document.getElementById("scatterPlot");
   const wrap = document.getElementById("scatterWrap");
@@ -908,12 +920,17 @@ function renderScatterPlot() {
 
   const W = wrap.clientWidth || 580;
   const H = 360;
-  const PL = 68, PR = 20, PT = 28, PB = 48;
+  const PL = 72, PR = 24, PT = 28, PB = 48;
   const plotW = W - PL - PR;
   const plotH = H - PT - PB;
 
-  const maxCtr = Math.max(Math.max(...data.map((r) => r.ctr)) * 1.1, rules.highCtr * 1.5, 5);
-  const maxY = Math.max(Math.max(...data.map((r) => r[yKey])) * 1.1, refY * 2, 1);
+  // Percentile-based axis caps to prevent outlier distortion
+  const sortedCtr = data.map((r) => r.ctr).sort((a, b) => a - b);
+  const sortedY = data.map((r) => r[yKey]).sort((a, b) => a - b);
+  const capCtr = Math.max(pct(sortedCtr, 0.92) * 1.15, rules.lowCtr * 5, 5);
+  const capY = Math.max(pct(sortedY, 0.88) * 1.2, refY * 3, 10);
+  const maxCtr = niceMax(capCtr);
+  const maxY = niceMax(capY);
 
   const sx = (v) => PL + (Math.min(v, maxCtr) / maxCtr) * plotW;
   const sy = (v) => PT + plotH - (Math.min(Math.max(v, 0), maxY) / maxY) * plotH;
@@ -952,31 +969,32 @@ function renderScatterPlot() {
   const nTick = 5;
   const xTicks = Array.from({ length: nTick }, (_, i) => {
     const v = (maxCtr / (nTick - 1)) * i;
-    return `<text x="${sx(v)}" y="${PT + plotH + 16}" text-anchor="middle" class="scatter-tick">${v.toFixed(1)}%</text>`;
+    return `<text x="${sx(v)}" y="${PT + plotH + 16}" text-anchor="middle" class="scatter-tick">${v.toFixed(v < 10 ? 1 : 0)}%</text>`;
   }).join("");
 
   const yTicks = Array.from({ length: nTick }, (_, i) => {
     const v = (maxY / (nTick - 1)) * i;
-    return `<text x="${PL - 6}" y="${sy(v) + 4}" text-anchor="end" class="scatter-tick">${getCurrency()}${Math.round(v)}</text>`;
+    const label = maxY >= 1000 ? `${getCurrency()}${(v / 1000).toFixed(1)}k` : `${getCurrency()}${Math.round(v)}`;
+    return `<text x="${PL - 6}" y="${sy(v) + 4}" text-anchor="end" class="scatter-tick">${label}</text>`;
   }).join("");
 
   const axisLabels = `
     <text x="${PL + plotW / 2}" y="${H - 6}" text-anchor="middle" class="scatter-axis-label">CTR (%)</text>
     <text x="12" y="${PT + plotH / 2}" text-anchor="middle" class="scatter-axis-label" transform="rotate(-90,12,${PT + plotH / 2})">${escapeHtml(yLabel)}</text>`;
 
+  // Outliers (beyond axis cap) render as hollow circles at the edge
   const dots = data.map((row) => {
-    const cx = sx(row.ctr);
-    const cy = sy(row[yKey]);
+    const rawCtr = row.ctr;
+    const rawY = row[yKey];
+    const isOutlier = rawCtr > maxCtr || rawY > maxY;
+    const cx = sx(rawCtr);
+    const cy = sy(rawY);
     const col = colorMap[row.category] || "#64748b";
     const label = row.term.length > 32 ? `${row.term.slice(0, 30)}…` : row.term;
-    return `<circle cx="${cx}" cy="${cy}" r="6" fill="${col}" fill-opacity="0.72" stroke="${col}" stroke-width="1.5"
-      class="scatter-dot"
-      data-term="${escapeHtml(label)}"
-      data-ctr="${row.ctr.toFixed(2)}"
-      data-val="${row[yKey].toFixed(2)}"
-      data-ylabel="${escapeHtml(yLabel)}"
-      data-cat="${row.category}"
-    />`;
+    const attrs = `class="scatter-dot" data-term="${escapeHtml(label)}" data-ctr="${rawCtr.toFixed(2)}" data-val="${rawY.toFixed(2)}" data-ylabel="${escapeHtml(yLabel)}" data-cat="${row.category}" data-outlier="${isOutlier ? 1 : 0}"`;
+    return isOutlier
+      ? `<circle cx="${cx}" cy="${cy}" r="5" fill="none" stroke="${col}" stroke-width="2" opacity="0.55" ${attrs}/>`
+      : `<circle cx="${cx}" cy="${cy}" r="6" fill="${col}" fill-opacity="0.72" stroke="${col}" stroke-width="1.5" ${attrs}/>`;
   }).join("");
 
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
@@ -984,15 +1002,21 @@ function renderScatterPlot() {
   svg.innerHTML = quadShading + gridLines + refLines + border + qlabels + dots + xTicks + yTicks + axisLabels;
 
   const subtitle = document.getElementById("scatterSubtitle");
-  if (subtitle) subtitle.textContent = `${data.length} terms · rujukan: CTR ${rules.lowCtr}% | ${yLabel} ${getCurrency()}${Math.round(refY)}`;
+  const outlierCount = data.filter((r) => r.ctr > maxCtr || r[yKey] > maxY).length;
+  if (subtitle) {
+    subtitle.textContent = `${data.length} terms · rujukan: CTR ${rules.lowCtr}% | ${yLabel} ${getCurrency()}${Math.round(refY)}`;
+    if (outlierCount) subtitle.textContent += ` · ${outlierCount} outlier (◯)`;
+  }
 
   const tooltip = document.getElementById("scatterTooltip");
   svg.querySelectorAll(".scatter-dot").forEach((dot) => {
     dot.addEventListener("mouseenter", () => {
+      const outlierNote = dot.dataset.outlier === "1" ? `<div class="stt-outlier">⚠️ Outlier — di luar skala carta</div>` : "";
       tooltip.innerHTML = `
         <strong>${escapeHtml(dot.dataset.term)}</strong>
         <div class="stt-row"><span>CTR</span><span>${dot.dataset.ctr}%</span></div>
         <div class="stt-row"><span>${escapeHtml(dot.dataset.ylabel)}</span><span>${getCurrency()} ${dot.dataset.val}</span></div>
+        ${outlierNote}
         <div style="margin-top:6px"><span class="label-pill label-${dot.dataset.cat}">${dot.dataset.cat}</span></div>`;
       tooltip.classList.remove("is-hidden");
     });
