@@ -1898,6 +1898,13 @@ input[type="checkbox"] {
   padding: 2px 0;
 }
 
+.stt-outlier {
+  margin-top: 5px;
+  font-size: 11px;
+  color: var(--amber);
+  font-weight: 700;
+}
+
 .dark .scatter-tooltip {
   background: #1e293b;
   border-color: rgba(248, 250, 252, 0.12);
