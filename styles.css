@@ -1773,3 +1773,144 @@ input[type="checkbox"] {
   border: 1px solid var(--line);
   border-radius: 999px;
 }
+
+/* ── KPI subtitle ───────────────────────────────────────────────────────────── */
+
+.kpi-sub {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Scatter Plot ───────────────────────────────────────────────────────────── */
+
+.scatter-section {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+  position: relative;
+}
+
+.scatter-section::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.42), rgba(20, 184, 166, 0.34), transparent);
+}
+
+.scatter-subtitle {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.scatter-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.scatter-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.scatter-ref {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+
+.scatter-tick {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-heading);
+}
+
+.scatter-axis-label {
+  fill: var(--slate);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-heading);
+}
+
+.scatter-qlabel {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-heading);
+  opacity: 0.65;
+}
+
+.scatter-dot {
+  cursor: pointer;
+  transition: fill-opacity 120ms, r 120ms;
+}
+
+.scatter-dot:hover {
+  fill-opacity: 1 !important;
+  r: 9;
+}
+
+.q-shade {
+  opacity: 0.045;
+}
+
+.q-problem    { fill: var(--rose); }
+.q-weakness   { fill: var(--amber); }
+.q-gem        { fill: #64748b; }
+.q-opportunity { fill: var(--green); }
+
+.scatter-tooltip {
+  position: absolute;
+  z-index: 100;
+  pointer-events: none;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 13px;
+  min-width: 164px;
+  box-shadow: var(--shadow-panel);
+  font-size: 12px;
+  color: var(--slate);
+  line-height: 1.4;
+}
+
+.scatter-tooltip strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 740;
+  margin-bottom: 7px;
+}
+
+.stt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 2px 0;
+}
+
+.dark .scatter-tooltip {
+  background: #1e293b;
+  border-color: rgba(248, 250, 252, 0.12);
+}
+
+/* ── Keyword Gap ────────────────────────────────────────────────────────────── */
+
+.keyword-exact {
+  font-family: monospace;
+  font-size: 12px;
+  padding: 2px 7px;
+  background: var(--brand-soft);
+  border-radius: 5px;
+  color: var(--brand);
+  white-space: nowrap;
+}
