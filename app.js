@@ -124,9 +124,81 @@ const els = {
 
 document.addEventListener("DOMContentLoaded", bindEvents);
 
+function showLoading() {
+  document.getElementById("loadingOverlay").classList.remove("is-hidden");
+}
+
+function hideLoading() {
+  document.getElementById("loadingOverlay").classList.add("is-hidden");
+}
+
+function showToast(message, icon = "✓") {
+  const container = document.getElementById("toastContainer");
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${escapeHtml(message)}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 2900);
+}
+
+function toggleDarkMode() {
+  const isDark = document.documentElement.classList.toggle("dark");
+  document.getElementById("darkModeToggle").textContent = isDark ? "☀️" : "🌙";
+  try { localStorage.setItem("sta_dark_mode", isDark ? "1" : "0"); } catch {}
+}
+
+function applyPersistedTheme() {
+  try {
+    if (localStorage.getItem("sta_dark_mode") === "1") {
+      document.documentElement.classList.add("dark");
+      const btn = document.getElementById("darkModeToggle");
+      if (btn) btn.textContent = "☀️";
+    }
+  } catch {}
+}
+
+function openHelp(tab) {
+  const modal = document.getElementById("helpModal");
+  modal.classList.remove("is-hidden");
+  document.body.style.overflow = "hidden";
+  if (tab) switchHelpTab(tab);
+}
+
+function closeHelp() {
+  document.getElementById("helpModal").classList.add("is-hidden");
+  document.body.style.overflow = "";
+}
+
+function switchHelpTab(name) {
+  document.querySelectorAll(".help-tab").forEach((btn) => {
+    const isActive = btn.dataset.tab === name;
+    btn.classList.toggle("active", isActive);
+    btn.setAttribute("aria-selected", isActive ? "true" : "false");
+  });
+  document.querySelectorAll(".help-panel").forEach((panel) => {
+    panel.classList.toggle("active", panel.dataset.panel === name);
+  });
+}
+
 function bindEvents() {
+  applyPersistedTheme();
   restoreSettingsOnly();
   applyCopyText();
+  document.getElementById("darkModeToggle").addEventListener("click", toggleDarkMode);
+  document.getElementById("helpButton").addEventListener("click", () => openHelp("download"));
+  document.getElementById("helpClose").addEventListener("click", closeHelp);
+  document.querySelector(".help-backdrop").addEventListener("click", closeHelp);
+  document.querySelectorAll(".help-tab").forEach((btn) => {
+    btn.addEventListener("click", () => switchHelpTab(btn.dataset.tab));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      if (!document.getElementById("helpModal").classList.contains("is-hidden")) {
+        closeHelp();
+        return;
+      }
+    }
+  });
   els.uploadButton.addEventListener("click", () => els.fileInput.click());
   els.compareUploadButton.addEventListener("click", () => els.compareFileInput.click());
   els.fileInput.addEventListener("change", handleFileInput);
@@ -215,6 +287,17 @@ function bindEvents() {
     if (file) readFile(file);
   });
 
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !document.getElementById("helpModal").classList.contains("is-hidden")) {
+      return;
+    }
+    if (event.key === "Escape" && els.searchFilter.value) {
+      els.searchFilter.value = "";
+      state.filters.search = "";
+      renderDetail();
+    }
+  });
+
   window.addEventListener("resize", scheduleChartRerender);
   if (document.fonts?.ready) {
     document.fonts.ready.then(scheduleChartRerender);
@@ -232,11 +315,16 @@ function handleCompareFileInput(event) {
 }
 
 function readFile(file, mode = "primary") {
+  showLoading();
   const reader = new FileReader();
   reader.onload = () => {
-    const text = decodeFile(reader.result);
-    loadText(text, file.name, mode);
+    setTimeout(() => {
+      const text = decodeFile(reader.result);
+      loadText(text, file.name, mode);
+      hideLoading();
+    }, 0);
   };
+  reader.onerror = () => hideLoading();
   reader.readAsArrayBuffer(file);
 }
 
@@ -278,10 +366,12 @@ function loadText(text, label, mode = "primary") {
 }
 
 function loadSample() {
+  showLoading();
   fetch("./sample/google-ads-search-terms.csv")
     .then((response) => response.text())
-    .then((text) => loadText(text, "Sample report"))
+    .then((text) => { loadText(text, "Sample report"); hideLoading(); })
     .catch(() => {
+      hideLoading();
       const text = [
         "Search term,Campaign,Ad group,Cost,Clicks,Impressions,CTR,Conversions,Conversion value,Search impression share,Device",
         "rose gold necklace,Brand Search,Brand Exact,28.40,18,210,8.57%,3,450,34%,Mobile",
@@ -899,7 +989,7 @@ function buildAiPrompt(lines) {
 function copyAiPrompt() {
   if (!state.aiPrompt) return;
   navigator.clipboard.writeText(state.aiPrompt).then(() => {
-    els.fileStatus.textContent = "AI strategy prompt copied";
+    showToast("AI strategy prompt copied", "🤖");
   });
 }
 
@@ -1145,6 +1235,20 @@ function renderDetail() {
   const visible = filteredRows().sort(compareRows);
   const limited = visible.slice(0, 250);
   state.visibleDetail = limited;
+
+  const countEl = document.getElementById("detailRowCount");
+  if (countEl) {
+    const total = state.enriched.length;
+    if (visible.length < total) {
+      countEl.textContent = `${visible.length.toLocaleString()} of ${total.toLocaleString()}`;
+      countEl.style.display = "";
+    } else if (total > 0) {
+      countEl.textContent = `${total.toLocaleString()} terms`;
+      countEl.style.display = "";
+    } else {
+      countEl.style.display = "none";
+    }
+  }
 
   document.getElementById("detailTable").innerHTML = limited.length
     ? limited.map((row) => `
@@ -1435,20 +1539,20 @@ function saveSession() {
     compareRows: state.compareRows,
     selected: Array.from(state.selected)
   }));
-  els.fileStatus.textContent = "Session saved locally";
+  showToast("Session saved locally", "💾");
 }
 
 function restoreSession() {
   const session = safeReadSession();
   if (!session.rows?.length) {
-    els.fileStatus.textContent = "No saved session found";
+    showToast("No saved session found", "⚠️");
     return;
   }
   applySettings(session.settings || {});
   state.rows = session.rows || [];
   state.compareRows = session.compareRows || [];
   state.selected = new Set(session.selected || []);
-  els.fileStatus.textContent = `Restored ${state.rows.length} search terms`;
+  showToast(`Restored ${state.rows.length} search terms`, "♻️");
   els.compareStatus.textContent = state.compareRows.length ? `Restored ${state.compareRows.length} comparison terms` : "No comparison report loaded";
   els.report.classList.remove("is-hidden");
   rerender();
@@ -1468,6 +1572,6 @@ function copySelected(mode) {
   if (!terms.length) return;
   const formatted = terms.map((term) => mode === "exact" ? `[${term}]` : `"${term}"`).join("\n");
   navigator.clipboard.writeText(formatted).then(() => {
-    els.fileStatus.textContent = `${terms.length} ${mode} negatives copied`;
+    showToast(`${terms.length} ${mode} negatives copied`, "📋");
   });
 }
