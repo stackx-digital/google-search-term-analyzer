@@ -268,6 +268,7 @@ function bindEvents() {
   document.getElementById("copyAiPromptButton").addEventListener("click", copyAiPrompt);
   document.getElementById("autoSelectNegativesButton").addEventListener("click", autoSelectNegatives);
   document.getElementById("googleAdsEditorButton").addEventListener("click", exportGoogleAdsEditorNegatives);
+  document.getElementById("exportKeywordGapButton").addEventListener("click", exportKeywordGap);
 
   [els.negativeMatchSelect, els.negativeLevelSelect].forEach((input) => {
     input.addEventListener("change", renderNegativeBuilder);
@@ -583,9 +584,11 @@ function rerender() {
   renderAiBrief();
   renderComparison();
   renderCharts();
+  renderScatterPlot();
   renderBreakdowns();
   renderBuckets();
   renderSegments();
+  renderKeywordGap();
   renderNegativeBuilder();
   renderDetail();
 }
@@ -852,14 +855,16 @@ function renderKpis() {
   const totalSpend = sum(state.enriched, "cost");
   const totalConversions = sum(state.enriched, "conversions");
   const totalValue = sum(state.enriched, "value");
-  const problems = state.enriched.filter((row) => row.category === "Problem").length;
+  const problemRows = state.enriched.filter((row) => row.category === "Problem");
   const threats = state.enriched.filter((row) => row.category === "Threat").length;
+  const wastedSpend = sum(problemRows, "cost");
 
   setText("kpiTerms", state.enriched.length.toLocaleString());
   setText("kpiSpend", money(totalSpend));
   setText("kpiConversions", formatNumber(totalConversions));
   setText("kpiRoas", totalSpend > 0 ? `${(totalValue / totalSpend).toFixed(2)}x` : "0.00x");
-  setText("kpiProblems", problems.toLocaleString());
+  setText("kpiWaste", money(wastedSpend));
+  setText("kpiProblems", `${problemRows.length} problem term${problemRows.length !== 1 ? "s" : ""}`);
   setText("kpiThreats", threats.toLocaleString());
 }
 
@@ -880,7 +885,159 @@ function scheduleChartRerender() {
   chartResizeFrame = requestAnimationFrame(() => {
     chartResizeFrame = 0;
     renderCharts();
+    renderScatterPlot();
   });
+}
+
+function renderScatterPlot() {
+  const svg = document.getElementById("scatterPlot");
+  const wrap = document.getElementById("scatterWrap");
+  if (!svg || !wrap || !state.enriched.length) {
+    if (svg) svg.innerHTML = "";
+    return;
+  }
+
+  const rules = getRules();
+  const hasConv = state.enriched.some((r) => r.conversions > 0);
+  const yKey = hasConv ? "cpa" : "cost";
+  const yLabel = hasConv ? "CPA" : "Spend";
+  const refY = hasConv ? rules.targetCpa : rules.minWaste;
+
+  const data = state.enriched.filter((r) => r.clicks >= 1);
+  if (!data.length) { svg.innerHTML = ""; return; }
+
+  const W = wrap.clientWidth || 580;
+  const H = 360;
+  const PL = 68, PR = 20, PT = 28, PB = 48;
+  const plotW = W - PL - PR;
+  const plotH = H - PT - PB;
+
+  const maxCtr = Math.max(Math.max(...data.map((r) => r.ctr)) * 1.1, rules.highCtr * 1.5, 5);
+  const maxY = Math.max(Math.max(...data.map((r) => r[yKey])) * 1.1, refY * 2, 1);
+
+  const sx = (v) => PL + (Math.min(v, maxCtr) / maxCtr) * plotW;
+  const sy = (v) => PT + plotH - (Math.min(Math.max(v, 0), maxY) / maxY) * plotH;
+  const qx = sx(rules.lowCtr);
+  const qy = sy(refY);
+
+  const colorMap = { Opportunity: "#16a34a", Problem: "#e11d48", Weakness: "#f59e0b", Threat: "#7c3aed", Neutral: "#64748b" };
+
+  const quadShading = [
+    { x: PL, y: PT, w: qx - PL, h: qy - PT, cls: "q-problem" },
+    { x: qx, y: PT, w: PL + plotW - qx, h: qy - PT, cls: "q-weakness" },
+    { x: PL, y: qy, w: qx - PL, h: PT + plotH - qy, cls: "q-gem" },
+    { x: qx, y: qy, w: PL + plotW - qx, h: PT + plotH - qy, cls: "q-opportunity" }
+  ].map((q) => `<rect x="${q.x}" y="${q.y}" width="${Math.max(q.w, 0)}" height="${Math.max(q.h, 0)}" class="q-shade ${q.cls}"/>`).join("");
+
+  const qlabels = [
+    { x: (PL + qx) / 2, y: PT + 14, text: "Problem", fill: "#be123c" },
+    { x: (qx + PL + plotW) / 2, y: PT + 14, text: "Weakness", fill: "#92400e" },
+    { x: (PL + qx) / 2, y: PT + plotH - 6, text: "Hidden Gem", fill: "#475569" },
+    { x: (qx + PL + plotW) / 2, y: PT + plotH - 6, text: "Opportunity", fill: "#166534" }
+  ].map((l) => `<text x="${l.x}" y="${l.y}" text-anchor="middle" class="scatter-qlabel" fill="${l.fill}">${escapeHtml(l.text)}</text>`).join("");
+
+  const gridLines = [0.25, 0.5, 0.75].map((f) => {
+    const x = PL + f * plotW;
+    const y = PT + f * plotH;
+    return `<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT + plotH}" class="scatter-grid"/>
+            <line x1="${PL}" y1="${y}" x2="${PL + plotW}" y2="${y}" class="scatter-grid"/>`;
+  }).join("");
+
+  const refLines = `
+    <line x1="${qx}" y1="${PT}" x2="${qx}" y2="${PT + plotH}" class="scatter-ref" stroke-dasharray="5,3"/>
+    <line x1="${PL}" y1="${qy}" x2="${PL + plotW}" y2="${qy}" class="scatter-ref" stroke-dasharray="5,3"/>`;
+
+  const border = `<rect x="${PL}" y="${PT}" width="${plotW}" height="${plotH}" fill="none" stroke="var(--line)" stroke-width="1"/>`;
+
+  const nTick = 5;
+  const xTicks = Array.from({ length: nTick }, (_, i) => {
+    const v = (maxCtr / (nTick - 1)) * i;
+    return `<text x="${sx(v)}" y="${PT + plotH + 16}" text-anchor="middle" class="scatter-tick">${v.toFixed(1)}%</text>`;
+  }).join("");
+
+  const yTicks = Array.from({ length: nTick }, (_, i) => {
+    const v = (maxY / (nTick - 1)) * i;
+    return `<text x="${PL - 6}" y="${sy(v) + 4}" text-anchor="end" class="scatter-tick">${getCurrency()}${Math.round(v)}</text>`;
+  }).join("");
+
+  const axisLabels = `
+    <text x="${PL + plotW / 2}" y="${H - 6}" text-anchor="middle" class="scatter-axis-label">CTR (%)</text>
+    <text x="12" y="${PT + plotH / 2}" text-anchor="middle" class="scatter-axis-label" transform="rotate(-90,12,${PT + plotH / 2})">${escapeHtml(yLabel)}</text>`;
+
+  const dots = data.map((row) => {
+    const cx = sx(row.ctr);
+    const cy = sy(row[yKey]);
+    const col = colorMap[row.category] || "#64748b";
+    const label = row.term.length > 32 ? `${row.term.slice(0, 30)}…` : row.term;
+    return `<circle cx="${cx}" cy="${cy}" r="6" fill="${col}" fill-opacity="0.72" stroke="${col}" stroke-width="1.5"
+      class="scatter-dot"
+      data-term="${escapeHtml(label)}"
+      data-ctr="${row.ctr.toFixed(2)}"
+      data-val="${row[yKey].toFixed(2)}"
+      data-ylabel="${escapeHtml(yLabel)}"
+      data-cat="${row.category}"
+    />`;
+  }).join("");
+
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("height", H);
+  svg.innerHTML = quadShading + gridLines + refLines + border + qlabels + dots + xTicks + yTicks + axisLabels;
+
+  const subtitle = document.getElementById("scatterSubtitle");
+  if (subtitle) subtitle.textContent = `${data.length} terms · rujukan: CTR ${rules.lowCtr}% | ${yLabel} ${getCurrency()}${Math.round(refY)}`;
+
+  const tooltip = document.getElementById("scatterTooltip");
+  svg.querySelectorAll(".scatter-dot").forEach((dot) => {
+    dot.addEventListener("mouseenter", () => {
+      tooltip.innerHTML = `
+        <strong>${escapeHtml(dot.dataset.term)}</strong>
+        <div class="stt-row"><span>CTR</span><span>${dot.dataset.ctr}%</span></div>
+        <div class="stt-row"><span>${escapeHtml(dot.dataset.ylabel)}</span><span>${getCurrency()} ${dot.dataset.val}</span></div>
+        <div style="margin-top:6px"><span class="label-pill label-${dot.dataset.cat}">${dot.dataset.cat}</span></div>`;
+      tooltip.classList.remove("is-hidden");
+    });
+    dot.addEventListener("mousemove", (e) => {
+      const rect = wrap.getBoundingClientRect();
+      let x = e.clientX - rect.left + 14;
+      let y = e.clientY - rect.top - 10;
+      if (x + 180 > rect.width) x -= 196;
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+    });
+    dot.addEventListener("mouseleave", () => tooltip.classList.add("is-hidden"));
+  });
+}
+
+function renderKeywordGap() {
+  const tbody = document.getElementById("keywordGapTable");
+  if (!tbody) return;
+
+  const gaps = state.enriched
+    .filter((row) => row.category === "Opportunity")
+    .sort((a, b) => b.priority - a.priority || b.conversions - a.conversions || b.roas - a.roas)
+    .slice(0, 15);
+
+  tbody.innerHTML = gaps.length
+    ? gaps.map((row) => `
+      <tr>
+        ${termCell(row.term)}
+        <td><span class="label-pill label-${row.category}">${row.category}</span></td>
+        <td class="right">${row.ctr.toFixed(2)}%</td>
+        ${right(formatNumber(row.conversions))}
+        ${right(`${row.roas.toFixed(2)}x`)}
+        <td><code class="keyword-exact">[${escapeHtml(row.term)}]</code></td>
+      </tr>`).join("")
+    : `<tr class="empty-row"><td colspan="6">Tiada term Opportunity untuk dicadangkan</td></tr>`;
+}
+
+function exportKeywordGap() {
+  const gaps = state.enriched
+    .filter((row) => row.category === "Opportunity")
+    .sort((a, b) => b.priority - a.priority);
+  downloadCsv(`keyword_gap_${today()}.csv`,
+    ["Search Term", "Exact Match Keyword", "CTR", "Conversions", "ROAS", "Cost", "Rationale"],
+    gaps.map((row) => [row.term, `[${row.term}]`, row.ctr.toFixed(2), row.conversions, row.roas.toFixed(2), row.cost.toFixed(2), row.reason])
+  );
 }
 
 function shortLabel(value, maxLength) {
